@@ -1,0 +1,457 @@
+---
+title: "group project"
+author: "sichengshen"
+date: "2024-03-29"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## EDA
+
+
+```{r 1}
+library(MASS)
+dataset <- read.csv("data.csv")
+sum(is.na(dataset))
+dataset
+```
+
+alq111 is constant. everyone in the survey had a drink of any kind of alcohol before.
+This means that alq111 cannot affect our final results.
+
+## DMDMARTZ:  Marriage INDFMPIR: Ratio of family income to poverty 0-5
+```{r}
+library(ggplot2)
+boxplot(INDFMPIR ~ factor(DMDMARTZ), data = dataset,
+        xlab = "marriage", ylab = "income",
+        main = "Boxplot of family income based on Marriage levels")
+```
+
+one is married seem to be more wealthy.  2 and 3 about the same result. no need to
+drop
+
+## boxplot of INDFMPIR and INDFMMPC
+
+
+```{r}
+boxplot(INDFMPIR ~ factor(INDFMMPC), data = dataset,
+        xlab = "INDFMMPC", ylab = "INDFMPIR",
+        main = "Boxplot of INDFMPIR based on INDFMMPC levels")
+```
+
+From the boxplot above, remove INDFMMPC
+
+## correlation
+
+```{r correlation}
+
+correlation1  <- cor(dataset$RIDAGEYR, dataset$INDFMPIR)
+print(correlation1)
+correlation2  <- cor(dataset$RIDAGEYR, dataset$BMXBMI)
+print(correlation2)
+correlation3  <- cor(dataset$INDFMPIR, dataset$BMXBMI)
+print(correlation3)
+
+```
+
+
+
+check the correlations between 3 continuous variables, each of them is very small,
+there is no linear relationship between 3 continuous variables. So we keep these
+variables in our model.
+
+
+## alchohol use
+
+```{r alq}
+
+boxplot(ALQ121 ~ factor(ALQ151), data = dataset,
+xlab = "ALQ151 (Ever have 4/5 or more drinks every day?)",
+ylab = "ALQ121 (Past 12 mo how often drink alcoholic bev)",
+main = "Box Plot of ALQ121 by ALQ151")
+```
+
+ALQ151 yes often leads to a decrease rate in ALQ121. No obvious relationship. 
+Keep these variables.
+
+## pressure and cholesterol level
+
+```{r bpq}
+ggplot(dataset, aes(x = factor(BPQ080), fill = factor(BPQ020))) +
+  geom_bar(position = "dodge") +
+  labs(x = "BPQ080", y = "Count", fill = "BPQ020") +
+  ggtitle("Bar Plot")
+
+```
+
+No high cholesterol level, no high pressure. high cholesterol level, more high 
+pressure. drop BPQ080
+
+##Frozen Meals/Pizza and Ready-to-Eat Foods
+ 
+```{r dbq}
+ggplot(dataset, aes(x = DBD905, y = DBD910)) +
+  geom_point() +
+  labs(x = "# of Ready-to-Eat Foods in past 30 days",
+       y = "# of Frozen Meals/Pizza in past 30 days",
+       title = "Scatter Plot of DBD905 vs DBD910")
+```
+
+
+drop Frozen Meals/Pizza in past 30 days: DBD910
+
+## other in dbq part
+
+```{r}
+boxplot(DBD895 ~ DBQ700, data = dataset,
+        xlab = "How Healthy is the Diet",
+        ylab = "# of Meals not Home Prepared during Last 7 days",
+        main = "Boxplot of DBD895 by DBQ700")
+```
+
+
+
+```{r}
+boxplot(DBD905 ~ DBQ700, data = dataset,
+        xlab = "How Healthy is the Diet",
+        ylab = "# of Ready-to-Eat Foods in past 30 days",
+        main = "Boxplot of DBD905 by DBQ700")
+```
+
+
+```{r}
+boxplot(DBD895 ~ DBQ197, data = dataset,
+        xlab = "Past 30 day Milk Product Consumption",
+        ylab = "# of Meals not Home Prepared during Last 7 days",
+        main = "Boxplot of DBD895 by DBQ197")
+```
+
+
+
+```{r}
+boxplot(DBD905 ~ DBQ197, data = dataset,
+        xlab = "Past 30 day Milk Product Consumption",
+        ylab = "# of Ready-to-Eat Foods in past 30 days",
+        main = "Boxplot of DBD905 by DBQ197")
+```
+
+
+
+
+
+```{r}
+ggplot(dataset, aes(x = factor(DBQ700), fill = factor(DBQ197))) +
+  geom_bar(position = "dodge") +
+  labs(x = "DBQ700", y = "Count", fill = "DBQ197") +
+  ggtitle("Bar Plot")
+```
+nothing to do with these two.
+
+
+just drop DBD910
+
+## mcq part
+
+```{r}
+
+ggplot(dataset, aes(x = factor(MCQ053), fill = factor(MCQ092))) +
+  geom_bar(position = "dodge") +
+  labs(x = "MCQ053", y = "Count", fill = "MCQ092") +
+  ggtitle("Bar Plot")
+
+```
+
+no anemia, no need to blood transfer. people who have no anemia, take blood tranfer
+for other reasons. we take anemia MCQ053, drop blood transfer MCQ092.
+
+
+
+conclusion: INDFMMPC,  BPQ080, DBD910, MCQ092.
+
+```{r}
+dataset <- dataset[, -1]
+dataset <- dataset[, -10]
+dataset <- subset(dataset, select = -c(INDFMMPC,  BPQ080, DBD910, MCQ092))
+
+```
+
+```{r}
+dataset[-20]
+```
+
+
+## a simple test
+
+
+```{r 3}
+train_prop <- 0.8
+train_idx <- sample(1:nrow(dataset), size = floor(train_prop * nrow(dataset)))
+traindata <- dataset[train_idx, ]
+testdata <- dataset[-train_idx, ]
+lda_model <- lda(depressed~ ., data = traindata)
+lda_model
+
+```
+
+
+```{r 2}
+train_pred = predict(lda_model, traindata)$class
+train_err = mean(train_pred !=  traindata$depressed)
+train_err
+
+
+test_pred = predict(lda_model, testdata)$class
+test_err = mean(test_pred != testdata$depressed)
+test_err
+```
+
+# KNN Regression
+
+```{r}
+library(FNN)
+# set seed for reproducibility
+set.seed(1) 
+
+# train data set contains 4788 observations, in order to get an idea of what range of Ks to try, we initially try all Ks for the form 240k + 1 for 0 <= k <= 20
+
+Ks <- seq(1, 4788, by = 240)
+
+trainMSEs <- c()
+testMSEs <- c()
+
+for (K in Ks) {
+  print(K)
+  
+  knnTrain <- knn.reg(train = traindata[,-20], y = traindata$depressed, test= traindata[,-20], k = K)
+  knnTest <- knn.reg(train = traindata[,-20], y = traindata$depressed, test= testdata[,-20], k = K)
+  
+  trainMSE <- mean((traindata$depressed - knnTrain$pred)^2)
+  testMSE <- mean((testdata$depressed - knnTest$pred)^2)
+  
+  trainMSEs <- c(trainMSEs, trainMSE)
+  testMSEs <- c(testMSEs, testMSE)
+  
+}
+```
+
+```{r}
+plot(Ks, trainMSEs, type = "b", lwd = 2, col = "blue", 
+     xlab = "K", ylab = "MSE", ylim =  c(0, 0.1))
+
+lines(Ks, testMSEs, type = "b", lwd = 2, col = "red")
+
+legend("bottomright", legend = c("Train MSE", "Test MSE"),
+       col = c("blue", "red"), lwd = c(2,2))
+
+Ks[which.min(testMSEs)]
+min(testMSEs)
+```
+We get K = 241 as the K with smallest test error. Looking at the plot of the MSE for all the K values, we see that after 241, all the MSEs appear to be very similar. In order to get a better idea of what K will be best to use with this data, we preform the same process again with a sequence of Ks close to 241.
+
+```{r}
+set.seed(1) 
+
+# train data set contains 4788 observations, in order to get an idea of what range of Ks to try, we initially try all Ks for the form 
+# 20k + 1 for 0 <= k <= 20
+
+Ks <- seq(1, 400, by = 20)
+
+trainMSEs <- c()
+testMSEs <- c()
+
+for (K in Ks) {
+  print(K)
+  
+  knnTrain <- knn.reg(train = traindata[,-20], y = traindata$depressed, test= traindata[,-20], k = K)
+  knnTest <- knn.reg(train = traindata[,-20], y = traindata$depressed, test= testdata[,-20], k = K)
+  
+  trainMSE <- mean((traindata$depressed - knnTrain$pred)^2)
+  testMSE <- mean((testdata$depressed - knnTest$pred)^2)
+  
+  trainMSEs <- c(trainMSEs, trainMSE)
+  testMSEs <- c(testMSEs, testMSE)
+  
+}
+```
+
+```{r}
+plot(Ks, trainMSEs, type = "b", lwd = 2, col = "blue", 
+     xlab = "K", ylab = "MSE", ylim =  c(0, 0.1))
+
+lines(Ks, testMSEs, type = "b", lwd = 2, col = "red")
+
+legend("bottomright", legend = c("Train MSE", "Test MSE"),
+       col = c("blue", "red"), lwd = c(2,2))
+
+Ks[which.min(testMSEs)]
+min(testMSEs)
+```
+Even after testing a smaller group of Ks closer to 240, we see that 241 is still the value for K that gives us the smallest test MSE.
+
+We want to scale predictors so all features are considered equally important. As the data has a lot of categorical variables, we will only scale the numeric variables.
+
+```{r}
+library(tidyverse)
+
+mean_train <- colMeans(traindata[, c("RIDAGEYR", "INDFMPIR", "BMXBMI", "DBD895", "DBD905")])
+sd_train <- sqrt(diag(var(traindata[, c("RIDAGEYR", "INDFMPIR", "BMXBMI", "DBD895", "DBD905")])))
+
+# scale variables
+traindatascaled <- traindata %>% select(c(RIDAGEYR, INDFMPIR, BMXBMI, DBD895, DBD905)) %>% scale(center = mean_train, scale = sd_train)
+
+# add scaled variables back to dataset
+X_trainDataScaled <- traindata %>% mutate(RIDAGEYR = traindatascaled[,1], INDFMPIR = traindatascaled[,2], BMXBMI = traindatascaled[,3], DBD895 = traindatascaled[,4], DBD905 = traindatascaled[,5])
+
+# scale variables
+testdatascaled <- testdata %>% select(c(RIDAGEYR, INDFMPIR, BMXBMI, DBD895, DBD905)) %>% scale(center = mean_train, scale = sd_train)
+
+# add scaled variables back to dataset
+X_testDataScaled <- testdata %>% mutate(RIDAGEYR = testdatascaled[,1], INDFMPIR = testdatascaled[,2], BMXBMI = testdatascaled[,3], DBD895 = testdatascaled[,4], DBD905 = testdatascaled[,5])
+```
+
+```{r}
+knnTest <- knn.reg(train = X_trainDataScaled, y = traindata$depressed, test = X_testDataScaled, k = 241)
+
+testMSE <- mean((testdata$depressed - knnTest$pred)^2)
+
+testMSE
+```
+
+#CV Linear using LASSO
+
+```{r}
+# Set the working directory
+#setwd("/Users/choejaewon/Desktop/stats413")
+
+library(glmnet)
+
+# Load the dataset
+dataset <- read.csv("data.csv")
+
+# Fit the linear model
+linear_model <- lm(depressed ~ ., data = dataset)
+
+# Summary of the linear model
+summary(linear_model)
+
+# Residual Analysis
+par(mfrow = c(2, 2))
+plot(linear_model)
+
+# Checking for homoscedasticity
+plot(linear_model$fitted.values, resid(linear_model), xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+# Normality Check
+hist(resid(linear_model), breaks = 20, main = "Histogram of Residuals", xlab = "Residuals")
+qqnorm(resid(linear_model))
+qqline(resid(linear_model), col = "red")
+
+# Reset plot settings
+par(mfrow = c(1, 1))
+
+# Standardize predictors
+x_scaled <- scale(dataset[, -which(names(dataset) == "depressed")])
+y <- as.numeric(dataset$depressed) 
+
+# Convert scaled data back to a data frame
+x_scaled <- as.data.frame(x_scaled)
+
+
+# Remove columns that have turned into NA after scaling
+x_scaled <- x_scaled[, colSums(is.na(x_scaled)) != nrow(x_scaled)]
+
+# Split data into training and testing sets
+set.seed(777)
+train_index <- c(sample(1:nrow(dataset), size = trunc(0.70 * nrow(dataset))))
+x_train <- x_scaled[train_index, ]
+x_test <- x_scaled[-train_index, ]
+y_train <- y[train_index]
+y_test <- y[-train_index]
+
+# Cross-validated LASSO model
+set.seed(777)
+cv_lasso <- cv.glmnet(as.matrix(x_train), y_train, alpha = 1, family = "binomial")
+
+# Best lambda from CV -> 0.000590866
+best_lambda <- cv_lasso$lambda.min
+
+# Fit LASSO model at best lambda
+lasso_model <- glmnet(x_train, y_train, alpha = 1, lambda = best_lambda, family = "binomial")
+
+# Predict on training data
+train_predictions <- predict(lasso_model, s = best_lambda, newx = as.matrix(x_train), type = "response")
+train_predicted_classes <- ifelse(train_predictions > 0.5, 1, 0)
+
+# Calculate mean squared error for training data
+train_mse <- mean((train_predicted_classes - y_train) ^ 2)
+cat("Mean Squared Error on training set:", train_mse, "\n")
+
+# Predict on test data
+test_predictions <- predict(lasso_model, s = best_lambda, newx = as.matrix(x_test), type = "response")
+test_predicted_classes <- ifelse(test_predictions > 0.5, 1, 0)
+
+# Calculate mean squared error for test data
+test_mse <- mean((test_predicted_classes - y_test) ^ 2)
+cat("Mean Squared Error on test set:", test_mse, "\n")
+
+# Plot variable importance
+plot(cv_lasso)
+```
+
+We now get a smaller test MSE
+
+# Logistic Regression
+
+```{r}
+dataset <- read.csv("data.csv")
+
+head(dataset)
+
+logmodel <- glm(depressed ~ ., data = dataset, family = binomial())
+summary(logmodel)
+
+```
+
+```{r}
+# Load the necessary library
+library(caret)
+setwd("/Users/choejaewon/Desktop/stats413")
+
+dataset <- read.csv("data.csv")
+
+dataset$depressed <- as.factor(dataset$depressed)
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+training_rows <- createDataPartition(dataset$depressed, p = 0.7, list = FALSE)
+train_data <- dataset[training_rows, ]
+test_data <- dataset[-training_rows, ]
+
+# Build a GLM model: logistic regression
+glm_model <- glm(depressed ~ ., family = binomial, data = train_data)
+
+# Predict on the test set
+predictions <- predict(glm_model, newdata = test_data, type = "response")
+
+# Convert probabilities to binary predictions
+predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+
+# Calculate test error (Misclassification Error)
+test_error <- mean(predicted_classes != test_data$depressed)
+print(paste("Test error: ", test_error))
+
+# Alternatively, calculate MSE for the probabilities
+mse <- mean((predicted_classes - as.numeric(test_data$depressed))^2)
+print(paste("Mean Squared Error: ", mse))
+
+plot(glm_model)
+```
+
+```{r}
+
+```
+

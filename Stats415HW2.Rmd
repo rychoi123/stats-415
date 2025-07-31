@@ -1,0 +1,69 @@
+---
+title: "Stats 415 HW2"
+author: "Jaewon Choi"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+setwd("/Users/choejaewon/desktop")
+college = read.csv("College.csv")
+rownames(college) = college[,1]
+college <- college[,-1]
+View(college)
+summary(college)
+college[,1] = as.numeric(factor(college[,1]))
+A <- college[,1:10]
+pairs(A)
+boxplot(college$Outstat[college$Private == 1], college$Outstat[college$Private == 2], names = c("public","private"))
+
+Elite = rep("No", nrow(college))
+Elite[college$Top10perc >50] = "Yes"
+Elite = as.factor(Elite)
+summary(Elite)
+college = data.frame(college, Elite)
+college[,19] = as.numeric(factor(college[,19]))
+boxplot(college$Outstate[college$Elite == 1], college$Outstate[college$Elite == 2], names = c("Non-Elite","Elite"))
+
+
+par(mfrow=c(2,2))
+hist(college$Apps[college$Elite == 1], main = "Non-Elite App1", xlab = "Apps", breaks =10)
+hist(college$Apps[college$Elite == 2], main = "Elite App1", xlab = "Apps", breaks =10)
+hist(college$Apps[college$Elite == 1], main = "Non-Elite App2", xlab = "Apps", breaks =20)
+hist(college$Apps[college$Elite == 2], main = "Elite App2", xlab = "Apps", breaks =20)
+
+
+hist(college$Accept[college$Elite == 1], main = "Non-Elite Accept", xlab = "Accept", breaks =20)
+hist(college$Accept[college$Elite == 2], main = "Elite Accept", xlab = "Accept", breaks = 20)
+hist(college$Enroll[college$Elite == 1], main = "Non Elite Enroll", xlab = "Enroll", breaks = 20)
+hist(college$Enroll[college$Elite == 2], main = "Elite Enroll", xlab = "Enroll", breaks = 20)
+dev.off()
+```
+#Q1 c) vi :  We can see that their is much lower acceptance rate and higher acceptance-enrollment ratio for elite schools then non-elite schools.
+```{r}
+library('ISLR')
+Initiallm <- lm(Carseats$Sales~Carseats$Price+Carseats$Urban+Carseats$US)
+summary(Initiallm)
+
+Finallm <- lm(Carseats$Sales~Carseats$Price+Carseats$US)
+summary(Finallm)
+```
+#Q2 b) keeping all other variables constant increase in price by 1 unit lead to decrease in sales of car by 0.054459
+#being in Urban region decrease in sales of car by 0.021916
+#Being in US increase in sales of car by 1.200573
+
+#Q2 c) 13.04 -0.054Price(numerical) - 0.0219(1 if urban 0 otherwise) + 1.2(1 if US 0otherwise)
+
+#Q2 d) US and Price both have p-value below alpha=0.05 therefore we can reject null hypothesis.
+
+#Q2 f) by looking at the Rsquared value of linear models we can tell that it has very weak fit to the data. Therefore we need to either add new predictors or seek different model type.

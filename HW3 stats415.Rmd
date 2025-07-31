@@ -1,0 +1,103 @@
+---
+title: "Stat415 HW2"
+author: "Jaewon Choi"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+
+#1 A)Polynomial has lower RSS, due to it's flexibility polynomial can provide lower RSS.
+
+#1 B)Linear has lower RSS, we know that the true model is linear and in testing model, 
+#Linear model is less likely to catch unnecessary noises and errors.
+
+#1 C)Polynomial regression has much higher flexibility. 
+#And despite the shape of actual model more flexible model 
+#always have lower RSS in training model.
+
+#1 D)We have no exact information of the preferred flexibility 
+#for the model therefore we don't know which one would have lower RSS
+```
+
+```{r}
+library(ISLR2)
+library(MASS)
+library(FNN)
+data(Carseats)
+help(Carseats)
+datalm<-lm(Sales~ . , data=Carseats)
+datalm
+sumdata <- summary(datalm)
+sumdata
+```
+```{r}
+sumdata$coefficients
+#2. a) 5.66 + 0.093 Income + 0.016 Advertising + 0.123 Population - 0.095 Price + 4.85 ShelveLocGood + 1.958 ShelveLocMed - 0.046 Age - 0.02 Education + 0.123 UrbanYes - 0.184 USYes
+# R^2 = 0.8734 meaning that the model fits quite well.
+```
+
+```{r}
+#2 b) All variables below 0.05 for p-val are significant: 
+#CompPrice, Income, Advertising, Price, ShelveLocGood, ShelveLocMedium, Age
+datalm2<-lm(Sales ~ . -Population - Education - Urban - US, data=Carseats)
+sumdata2 <- summary(datalm2)
+sumdata2$coefficients
+#2 c) both data sim to have similar fit since the reduced model have R^2 of 0.872
+```
+
+```{r}
+anova(datalm2, datalm)
+#2 d) P-value is 0.358 which is much larger than expected meaning 
+#that the change in model was significant. The fit of model 
+#2 e) we get three equations(?)
+# all of them are composed of 5.47 + 0.093 Income + 0.016 Advertising 
+#- 0.095 Price + 0.046 Age
+# but depending on Shelveloc value the intercept changes.
+#if good intercept = 5.48 +4.83 if medium intercept = 5.48 + 1.95, if bad intercpt = 5.48
+# other numerical varible have effect of altering the Sales by the coefficient value 
+#when they are altered by unit of 1. e.g if Income = 2 sales value would be 0.031 lower than when Income = 0.
+#only different coefficient is shelveloc. Depending on the location, 
+#the starting(intercept) alters. Logically it makes sense since being 
+#in a good location would have higher likelyhood of having higehr sales 
+#than in bad or medium location.
+```
+
+```{r}
+datalm3 <-lm(Sales ~ . -Population - Education - Urban - US + Price*ShelveLoc, data=Carseats)
+sumdata3 <- summary(datalm3)
+sumdata3$coefficients
+#2 f)it linked the value of price with location. Likewise we can see the magnitude of 
+#increase in price by 1 unit gets higher as location get better
+#(in order of good > medium > bad).
+#For instance coefficient of price in 
+#good loc is  -0.092975 where as coef in medium is -0.094944
+#The p-value suggests us to not use this interval since they exceed 0.05.
+```
+
+```{r}
+anova(datalm2, datalm3)
+#2 g) the anova test also suggest not to use the interval since its p-value is over 0.05 also.
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
